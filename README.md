@@ -17,12 +17,19 @@ Firmware for a Raspberry Pi Pico UPS controller using W5500 Ethernet and I2C per
 
 ## Hardware
 
-| Device | Address | Purpose |
+| Device | Interface / address | Purpose |
 | --- | --- | --- |
+| W5500-EVB-Pico | RP2040 + SPI W5500 Ethernet | Main controller, firmware execution and wired network interface |
+| ISO154x | Isolated I2C pass-through | Galvanic isolation between the Pico I2C bus and isolated-side peripherals |
+| PC817 two-channel board | Pi GPIO17 to ADS1115 A0/A1 | Isolated host-alive and final-shutdown sensing; both ground-link jumpers must be removed |
 | XL9535 | `0x20`-`0x27` | Relay outputs |
 | ADS1115 | `0x48`-`0x4B` | Isolated PC817 output sensing; required for outage-time relay cutoff |
 | AT24C256 | `0x50`-`0x57` | Persistent battery estimate and configuration |
 | LTC2944 | `0x64`-`0x67` | Battery voltage, current and temperature |
+| Mini 5 V DC-DC buck | Power | Local regulated 5 V rail |
+| Isolated 12 V DC-DC converter | Isolated power | Regulated, galvanically isolated 12 V supply |
+| SC-120W-12 UPS/charger | Mains, battery and 12 V output | Main 120 W supply and battery charger |
+| Wide-input 5 V USB converter | Power | Regulated 5 V supply for USB-powered loads |
 
 ### Bill of materials
 
@@ -39,7 +46,7 @@ hardware before ordering or energizing anything.
 | <img src="docs/images/parts/05-at24c256-eeprom.webp" width="150" alt="AT24C256 EEPROM module"> | [AT24C256 I2C EEPROM module](https://pt.aliexpress.com/item/1005007083692220.html) | Stores persistent battery state, configuration and low-battery lockout; address `0x50` by default. |
 | <img src="docs/images/parts/06-w5500-evb-pico.webp" width="150" alt="WIZnet W5500-EVB-Pico board"> | [WIZnet W5500-EVB-Pico](https://pt.aliexpress.com/item/1005008613789535.html) | RP2040 controller with wired W5500 Ethernet. The custom PCB below plugs onto it through female headers. |
 | <img src="docs/images/parts/07-mini-5v-buck.webp" width="150" alt="Miniature DC-DC buck converter"> | [Mini DC-DC buck converter](https://pt.aliexpress.com/item/1005004522623517.html) | Use the 5 V output variant shown for the local 5 V rail; verify the output with a meter before connecting electronics. |
-| <img src="docs/images/parts/08-12v-dc-dc-converter.webp" width="150" alt="DC-DC converter with 12 volt output"> | [DC-DC converter module](https://pt.aliexpress.com/item/1005009914339871.html) | Use the 12 V output variant shown. Confirm input range, polarity and regulated output for the purchased option. |
+| <img src="docs/images/parts/08-isolated-12v-dc-dc-converter.webp" width="150" alt="Isolated DC-DC converter with 12 volt output"> | [Isolated 12 V DC-DC converter module](https://pt.aliexpress.com/item/1005009914339871.html) | Provides a galvanically isolated, regulated 12 V supply. Use the 12 V output variant shown and confirm input range, polarity, isolation and output voltage for the purchased option. |
 | <img src="docs/images/parts/09-sc-120w-12-ups-supply.webp" width="150" alt="SC-120W-12 UPS and battery charger power supply"> | [MZMW SC-series UPS/charger supply](https://pt.aliexpress.com/item/1005005835163230.html) | The pictured build uses the **SC-120W-12 (120 W, 12 V)** option as the mains supply and battery charger. |
 | <img src="docs/images/parts/10-sealed-5v-usb-converter.webp" width="150" alt="Sealed wide-input 5 volt USB converter"> | [Wide-input 5 V USB DC-DC converter](https://pt.aliexpress.com/item/1005006466617097.html) | Provides a regulated USB 5 V output. Seller photos show conflicting maximum-current claims, so size and fuse it from the rating printed on the received unit. |
 | <img src="docs/images/parts/11-ads1115.webp" width="150" alt="ADS1115 I2C analog to digital converter"> | [ADS1115 16-bit I2C ADC module](https://pt.aliexpress.com/item/1005005973975124.html) | Reads the isolated PC817 outputs on A0/Pi1 and A1/Pi2. Tie ADDR to the ADS-side GND for address `0x48`. |
