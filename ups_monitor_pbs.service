@@ -1,0 +1,21 @@
+[Unit]
+Description=UPS Battery Monitor — PBS graceful shutdown on low battery
+After=network-online.target proxmox-backup.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=PICO_URL=http://192.168.6.122/status
+Environment=UPS_SHUTDOWN_API_ENABLED=1
+Environment=UPS_SHUTDOWN_API_HOST=0.0.0.0
+Environment=UPS_SHUTDOWN_API_PORT=80
+Environment=UPS_SHUTDOWN_ALLOWED_IP=192.168.6.122
+Environment=UPS_LOW_BATTERY_CONFIRM=30
+Environment=UPS_TASK_WAIT_MAX=780
+EnvironmentFile=-/etc/default/ups_monitor_pbs
+ExecStart=/usr/bin/python3 /usr/local/bin/ups_monitor_pbs.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

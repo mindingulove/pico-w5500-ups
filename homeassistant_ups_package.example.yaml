@@ -1,0 +1,442 @@
+# Home Assistant package for Pico UPS monitor.
+# Add this under /config/packages/ups_battery_monitor.yaml and make sure
+# configuration.yaml contains:
+# homeassistant:
+#   packages: !include_dir_named packages
+
+input_number:
+  ups_battery_main_manual_soc:
+    name: "UPS Battery Main Manual SOC"
+    min: 0
+    max: 100
+    step: 1
+    mode: box
+    unit_of_measurement: "%"
+    icon: mdi:battery-sync
+
+  ups_battery_main_estimated_load_w:
+    name: "UPS Estimated Outage Load"
+    min: 0.5
+    max: 500
+    step: 0.1
+    mode: box
+    unit_of_measurement: "W"
+    icon: mdi:lightning-bolt
+
+input_datetime:
+  ups_last_power_outage:
+    name: "UPS Last Power Outage"
+    has_date: true
+    has_time: true
+    initial: "2026-09-11 12:57:38"
+    icon: mdi:calendar-clock
+
+counter:
+  ups_power_outages:
+    name: "UPS Power Outages"
+    initial: 1
+    step: 1
+    restore: true
+    icon: mdi:transmission-tower-off
+
+rest_command:
+  ups_battery_main_calibrate_full:
+    url: "http://192.168.6.122/calibrate?token=replace_with_calibration_token&action=full"
+    method: get
+    timeout: 10
+
+  ups_battery_main_reset_50:
+    url: "http://192.168.6.122/calibrate?token=replace_with_calibration_token&action=reset"
+    method: get
+    timeout: 10
+
+  ups_battery_main_force_save:
+    url: "http://192.168.6.122/calibrate?token=replace_with_calibration_token&action=save"
+    method: get
+    timeout: 10
+
+  ups_battery_main_set_manual_soc:
+    url: >-
+      http://192.168.6.122/calibrate?token=replace_with_calibration_token&percent={{ states('input_number.ups_battery_main_manual_soc') | float(50) }}
+    method: get
+    timeout: 10
+
+  ups_pi_1_power_on:
+    url: "http://192.168.6.122/api/pi/1/power/on"
+    method: post
+    timeout: 10
+
+  ups_pi_1_graceful_shutdown:
+    url: "http://192.168.6.122/api/pi/1/shutdown"
+    method: post
+    timeout: 10
+
+  ups_pi_1_power_cycle:
+    url: "http://192.168.6.122/api/pi/1/power-cycle"
+    method: post
+    timeout: 10
+
+  ups_pi_2_power_on:
+    url: "http://192.168.6.122/api/pi/2/power/on"
+    method: post
+    timeout: 10
+
+  ups_pi_2_graceful_shutdown:
+    url: "http://192.168.6.122/api/pi/2/shutdown"
+    method: post
+    timeout: 10
+
+  ups_pi_2_power_cycle:
+    url: "http://192.168.6.122/api/pi/2/power-cycle"
+    method: post
+    timeout: 10
+
+  ups_all_power_on:
+    url: "http://192.168.6.122/api/pi/all/power/on"
+    method: post
+    timeout: 10
+
+  ups_all_graceful_shutdown:
+    url: "http://192.168.6.122/api/pi/all/shutdown"
+    method: post
+    timeout: 10
+
+  ups_all_power_cycle:
+    url: "http://192.168.6.122/api/pi/all/power-cycle"
+    method: post
+    timeout: 10
+
+template:
+  - sensor:
+      - name: "UPS HTTP Battery Main SOC"
+        unique_id: ups_battery_main_soc
+        unit_of_measurement: "%"
+        icon: mdi:battery
+        state_class: measurement
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('soc', 0) | float(0) }}"
+
+      - name: "UPS Battery Main Estimated Load W"
+        unique_id: ups_battery_main_estimated_load_sensor
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:lightning-bolt
+        state: "{{ states('input_number.ups_battery_main_estimated_load_w') | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Voltage"
+        unique_id: ups_battery_main_voltage
+        unit_of_measurement: "V"
+        device_class: voltage
+        state_class: measurement
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('voltage_v', 0) | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Current"
+        unique_id: ups_battery_main_current
+        unit_of_measurement: "A"
+        device_class: current
+        state_class: measurement
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('current_a', 0) | float(0) }}"
+
+      - name: "UPS Power Outages"
+        unique_id: ups_power_outages
+        unit_of_measurement: "outages"
+        state_class: total_increasing
+        icon: mdi:transmission-tower-off
+        state: "{{ states('counter.ups_power_outages') | int(0) }}"
+
+      - name: "UPS Outages Summary"
+        unique_id: ups_outages_summary
+        icon: mdi:transmission-tower-off
+        availability: >-
+          {{ states('input_datetime.ups_last_power_outage') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {{ states('counter.ups_power_outages') | int(0) }} ·
+          {{ as_timestamp(states('input_datetime.ups_last_power_outage'))
+             | timestamp_custom('%d %b %H:%M', true) }}
+        attributes:
+          outage_count: "{{ states('counter.ups_power_outages') | int(0) }}"
+          last_outage: "{{ states('input_datetime.ups_last_power_outage') }}"
+
+      - name: "UPS HTTP Battery Main Power"
+        unique_id: ups_battery_main_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('power_w', 0) | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Temperature"
+        unique_id: ups_battery_main_temperature
+        unit_of_measurement: "\u00B0C"
+        device_class: temperature
+        state_class: measurement
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('temperature_c', 0) | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Remaining Wh"
+        unique_id: ups_battery_main_remaining_wh
+        unit_of_measurement: "Wh"
+        state_class: measurement
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('remaining_wh', 0) | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Runtime"
+        unique_id: ups_battery_main_runtime
+        icon: mdi:timer-outline
+        availability: >-
+          {{ states('sensor.ups_pico_raw_status') not in ['unknown', 'unavailable'] and
+             (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('current_a') is not none }}
+        state: >-
+          {% set battery = state_attr('sensor.ups_pico_raw_status', 'battery') or {} %}
+          {% set current_a = battery.get('current_a', 0) | float(0) %}
+          {% set live_runtime = battery.get('runtime_min', -1) | float(-1) %}
+          {% if current_a > 0.05 %}
+            Charging
+          {% elif current_a < -0.05 %}
+            {% if live_runtime >= 0 %}
+              {{ live_runtime | round(1) }} min
+            {% else %}
+              {% set remaining_wh = battery.get('remaining_wh', 0) | float(0) %}
+              {% set estimated_load_w = states('input_number.ups_battery_main_estimated_load_w') | float(0) %}
+              {{ ((remaining_wh / estimated_load_w) * 60) | round(1) }} min
+            {% endif %}
+          {% else %}
+            Idle
+          {% endif %}
+        attributes:
+          current_a: "{{ (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('current_a', 0) | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Runtime Minutes"
+        unique_id: ups_battery_main_runtime_minutes
+        unit_of_measurement: "min"
+        icon: mdi:timer-outline
+        state_class: measurement
+        availability: >-
+          {% set battery = state_attr('sensor.ups_pico_raw_status', 'battery') or {} %}
+          {{ states('sensor.ups_pico_raw_status') not in ['unknown', 'unavailable'] and
+             battery.get('remaining_wh') is not none and
+             (battery.get('current_a', 0) | float(0)) < -0.05 }}
+        state: >-
+          {% set battery = state_attr('sensor.ups_pico_raw_status', 'battery') or {} %}
+          {% set live_runtime = battery.get('runtime_min', -1) | float(-1) %}
+          {% if live_runtime >= 0 %}
+            {{ live_runtime | round(1) }}
+          {% else %}
+            {% set remaining_wh = battery.get('remaining_wh', 0) | float(0) %}
+            {% set estimated_load_w = states('input_number.ups_battery_main_estimated_load_w') | float(0) %}
+            {{ ((remaining_wh / estimated_load_w) * 60) | round(1) }}
+          {% endif %}
+        attributes:
+          calculation_source: >-
+            {% set runtime = (state_attr('sensor.ups_pico_raw_status', 'battery') or {}).get('runtime_min', -1) | float(-1) %}
+            {{ 'live_discharge_load' if runtime >= 0 else 'configured_outage_load_estimate' }}
+          estimated_load_w: "{{ states('input_number.ups_battery_main_estimated_load_w') | float(0) }}"
+
+      - name: "UPS HTTP Battery Main Runtime Source"
+        unique_id: ups_battery_main_runtime_source
+        icon: mdi:information-outline
+        state: >-
+          {% set battery = state_attr('sensor.ups_pico_raw_status', 'battery') or {} %}
+          {% set current_a = battery.get('current_a', 0) | float(0) %}
+          {% set runtime = battery.get('runtime_min', -1) | float(-1) %}
+          {% if current_a > 0.05 %}Charging
+          {% elif current_a >= -0.05 %}Idle
+          {% elif runtime >= 0 %}Live discharge load
+          {% else %}Estimated outage load
+          {% endif %}
+
+      - name: "UPS HTTP Low Battery Stage"
+        unique_id: ups_low_battery_stage
+        icon: mdi:battery-alert
+        state: "{{ state_attr('sensor.ups_pico_raw_status', 'low_battery_stage') | default('unknown') }}"
+
+      - name: "UPS HTTP Pi1 ADS Voltage"
+        unique_id: ups_pi1_ads_voltage
+        unit_of_measurement: "V"
+        device_class: voltage
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.ups_pico_raw_status', 'pis') or [{}, {}])[0]).get('ads_v', 0) | float(0) }}"
+
+      - name: "UPS HTTP Pi2 ADS Voltage"
+        unique_id: ups_pi2_ads_voltage
+        unit_of_measurement: "V"
+        device_class: voltage
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.ups_pico_raw_status', 'pis') or [{}, {}])[1]).get('ads_v', 0) | float(0) }}"
+
+  - binary_sensor:
+      - name: "UPS Battery Discharging"
+        unique_id: ups_battery_discharging
+        device_class: battery
+        icon: mdi:battery-arrow-down
+        availability: >-
+          {{ states('sensor.ups_battery_main_mqtt_current') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {{ states('sensor.ups_battery_main_mqtt_current') | float(0) < -0.05 }}
+        delay_on:
+          seconds: 5
+        delay_off:
+          minutes: 1
+
+      - name: "UPS HTTP Pi1 Relay On"
+        unique_id: ups_pi1_relay_on
+        icon: mdi:electric-switch
+        state: "{{ ((state_attr('sensor.ups_pico_raw_status', 'pis') or [{}, {}])[0]).get('relay_on', false) | bool(false) }}"
+
+      - name: "UPS HTTP Pi2 Relay On"
+        unique_id: ups_pi2_relay_on
+        icon: mdi:electric-switch
+        state: "{{ ((state_attr('sensor.ups_pico_raw_status', 'pis') or [{}, {}])[1]).get('relay_on', false) | bool(false) }}"
+
+      - name: "UPS HTTP Pi1 Sensed On"
+        unique_id: ups_pi1_sensed_on
+        icon: mdi:raspberry-pi
+        state: "{{ ((state_attr('sensor.ups_pico_raw_status', 'pis') or [{}, {}])[0]).get('sensed_on', false) | bool(false) }}"
+
+      - name: "UPS HTTP Pi2 Sensed On"
+        unique_id: ups_pi2_sensed_on
+        icon: mdi:raspberry-pi
+        state: "{{ ((state_attr('sensor.ups_pico_raw_status', 'pis') or [{}, {}])[1]).get('sensed_on', false) | bool(false) }}"
+
+      - name: "UPS HTTP Hardware LTC2944"
+        unique_id: ups_hardware_ltc2944
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'hardware') or {}).get('ltc2944', false) | bool(false) }}"
+
+      - name: "UPS HTTP Hardware ADS1115"
+        unique_id: ups_hardware_ads1115
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'hardware') or {}).get('ads1115', false) | bool(false) }}"
+
+      - name: "UPS HTTP Hardware XL9535"
+        unique_id: ups_hardware_xl9535
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'hardware') or {}).get('xl9535', false) | bool(false) }}"
+
+      - name: "UPS HTTP Hardware AT24C256"
+        unique_id: ups_hardware_at24c256
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'hardware') or {}).get('at24c256', false) | bool(false) }}"
+
+      - name: "UPS HTTP Ethernet Link"
+        unique_id: ups_ethernet_link
+        icon: mdi:ethernet
+        state: "{{ (state_attr('sensor.ups_pico_raw_status', 'hardware') or {}).get('ethernet_link', false) | bool(false) }}"
+
+  - button:
+      - name: "UPS Battery Main Calibrate Full"
+        unique_id: ups_battery_main_calibrate_full
+        icon: mdi:battery-charging-100
+        press:
+          action: rest_command.ups_battery_main_calibrate_full
+
+      - name: "UPS Battery Main Reset 50%"
+        unique_id: ups_battery_main_reset_50
+        icon: mdi:battery-50
+        press:
+          action: rest_command.ups_battery_main_reset_50
+
+      - name: "UPS Battery Main Force Save"
+        unique_id: ups_battery_main_force_save
+        icon: mdi:content-save
+        press:
+          action: rest_command.ups_battery_main_force_save
+
+      - name: "UPS Battery Main Set Manual SOC"
+        unique_id: ups_battery_main_set_manual_soc
+        icon: mdi:battery-sync
+        press:
+          action: rest_command.ups_battery_main_set_manual_soc
+
+      - name: "UPS Pi1 Power On"
+        unique_id: ups_pi1_power_on
+        icon: mdi:power-plug
+        press:
+          action: rest_command.ups_pi_1_power_on
+
+      - name: "UPS Pi1 Graceful Shutdown"
+        unique_id: ups_pi1_graceful_shutdown
+        icon: mdi:power
+        press:
+          action: rest_command.ups_pi_1_graceful_shutdown
+
+      - name: "UPS Pi1 Power Cycle"
+        unique_id: ups_pi1_power_cycle
+        icon: mdi:restart
+        press:
+          action: rest_command.ups_pi_1_power_cycle
+
+      - name: "UPS Pi2 Power On"
+        unique_id: ups_pi2_power_on
+        icon: mdi:power-plug
+        press:
+          action: rest_command.ups_pi_2_power_on
+
+      - name: "UPS Pi2 Graceful Shutdown"
+        unique_id: ups_pi2_graceful_shutdown
+        icon: mdi:power
+        press:
+          action: rest_command.ups_pi_2_graceful_shutdown
+
+      - name: "UPS Pi2 Power Cycle"
+        unique_id: ups_pi2_power_cycle
+        icon: mdi:restart
+        press:
+          action: rest_command.ups_pi_2_power_cycle
+
+      - name: "UPS All Power On"
+        unique_id: ups_all_power_on
+        icon: mdi:power-plug
+        press:
+          action: rest_command.ups_all_power_on
+
+      - name: "UPS All Graceful Shutdown"
+        unique_id: ups_all_graceful_shutdown
+        icon: mdi:power
+        press:
+          action: rest_command.ups_all_graceful_shutdown
+
+      - name: "UPS All Power Cycle"
+        unique_id: ups_all_power_cycle
+        icon: mdi:restart
+        press:
+          action: rest_command.ups_all_power_cycle
+
+      - name: "Home Assistant Restart"
+        unique_id: ups_home_assistant_restart
+        icon: mdi:home-assistant
+        press:
+          action: homeassistant.restart
+
+      - name: "Home Assistant Stop"
+        unique_id: ups_home_assistant_stop
+        icon: mdi:stop-circle
+        press:
+          action: homeassistant.stop
+
+      - name: "Home Assistant Host Reboot"
+        unique_id: ups_home_assistant_host_reboot
+        icon: mdi:restart-alert
+        press:
+          action: hassio.host_reboot
+
+      - name: "Home Assistant Host Shutdown"
+        unique_id: ups_home_assistant_host_shutdown
+        icon: mdi:power
+        press:
+          action: hassio.host_shutdown
+
+automation:
+  - id: ups_count_power_outage
+    alias: "UPS - Count Power Outage"
+    description: "Count each confirmed transition from utility power to UPS battery discharge."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.ups_battery_discharging
+        from: "off"
+        to: "on"
+    action:
+      - action: counter.increment
+        target:
+          entity_id: counter.ups_power_outages
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ups_last_power_outage
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"

@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# systemd-shutdown invokes this after services have stopped and filesystems
+# have been unmounted or remounted read-only. Keep the host-alive signal HIGH
+# during an ordinary reboot; only a final halt/poweroff is safe for relay cut.
+case "$1" in
+  poweroff|halt) ;;
+  *) exit 0 ;;
+esac
+
+# Fail closed if the final sync fails or mount state cannot be inspected.
+# Virtual and RAM-backed filesystems do not represent persistent storage. Any
+# other filesystem still mounted read-write keeps GPIO17 HIGH, preventing the
+# Pico from authorizing relay cutoff.
+/bin/sync || exit 0
+[ -r /proc/mounts ] || exit 0
+
+while read -r source target fstype options remainder; do
+  case "$fstype" in
+    proc|sysfs|tmpfs|devtmpfs|devpts|cgroup|cgroup2|pstore|securityfs|debugfs|tracefs|configfs|mqueue|hugetlbfs|fusectl|ramfs|autofs|bpf|binfmt_misc|efivarfs|nsfs|rpc_pipefs)
+      continue
+      ;;
+  esac
+
+  case ",$options," in
+    *,rw,*) exit 0 ;;
+  esac
+done < /proc/mounts
+
+/usr/bin/pinctrl set 17 op dl
+exit 0

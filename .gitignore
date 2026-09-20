@@ -1,0 +1,24 @@
+# Local credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+ups_secrets.h
+homeassistant_ups_package.yaml
+
+# Private design notes
+plans/
+
+# Generated firmware and caches
+build/
+__pycache__/
+*.py[cod]
+
+# Local tooling and temporary reference material
+.claude/
+tmp/
+
+# Editor and operating-system metadata
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/

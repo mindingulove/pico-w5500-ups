@@ -1,0 +1,12 @@
+[Unit]
+Description=UPS host-alive signal on GPIO17
+After=local-fs.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/pinctrl set 17 op dh
+
+[Install]
+WantedBy=multi-user.target

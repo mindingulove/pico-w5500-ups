@@ -1,0 +1,13 @@
+- sensor:
+    name: "UPS HTTP Raw Status"
+    unique_id: ups_pico_raw_status
+    command: >-
+      curl -fsS --max-time 5 http://192.168.6.122/api/status
+    command_timeout: 8
+    scan_interval: 15
+    value_template: "{{ value_json.low_battery_stage | default('unknown') }}"
+    json_attributes:
+      - battery
+      - pis
+      - hardware
+      - low_battery_stage
