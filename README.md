@@ -2,6 +2,19 @@
 
 Firmware for a Raspberry Pi Pico UPS controller using W5500 Ethernet and I2C peripherals.
 
+### Assembled DeskPi rack build
+
+<table>
+  <tr>
+    <td><img src="docs/images/build/deskpi-rack-front.webp" width="420" alt="Front of the assembled UPS and DeskPi rack"></td>
+    <td><img src="docs/images/build/deskpi-rack-rear.webp" width="420" alt="Rear of the assembled UPS and DeskPi rack"></td>
+  </tr>
+  <tr>
+    <td align="center">Enclosed UPS and rack</td>
+    <td align="center">DeskPi rack installation and cabling</td>
+  </tr>
+</table>
+
 ## Hardware
 
 | Device | Address | Purpose |
@@ -10,6 +23,63 @@ Firmware for a Raspberry Pi Pico UPS controller using W5500 Ethernet and I2C per
 | ADS1115 | `0x48`-`0x4B` | Isolated PC817 output sensing; required for outage-time relay cutoff |
 | AT24C256 | `0x50`-`0x57` | Persistent battery estimate and configuration |
 | LTC2944 | `0x64`-`0x67` | Battery voltage, current and temperature |
+
+### Bill of materials
+
+AliExpress listings and available variants can change. Match the selected
+voltage, current rating, connector pitch and module pinout to the photographed
+hardware before ordering or energizing anything.
+
+| Photo | Part and purchase link | Use and required changes |
+| --- | --- | --- |
+| <img src="docs/images/parts/01-iso154x-i2c-isolator.webp" width="150" alt="ISO154x I2C isolator module"> | [ISO154x bidirectional I2C isolator module](https://pt.aliexpress.com/item/1005011832652644.html) | Galvanically isolates the I2C domains. Supply each side from its own domain and do not join grounds across the barrier. |
+| <img src="docs/images/parts/02-pc817-isolation-board.webp" width="150" alt="Two-channel PC817 isolation board"> | [Two-channel PC817 optocoupler isolation board](https://pt.aliexpress.com/item/1005009042140520.html) | Isolates the two Raspberry Pi GPIO17 host-alive signals before ADS1115 measurement. **Remove both yellow jumpers before use**; installed jumpers connect the input and output grounds and defeat galvanic isolation. |
+| <img src="docs/images/parts/03-xl9535-dual-relay.webp" width="150" alt="XL9535 two-channel relay board"> | [XL9535 I2C relay module](https://pt.aliexpress.com/item/1005005775051224.html) | Two output relays, detected by firmware at address `0x20` by default. This build uses the 5 V relay-board variant. |
+| <img src="docs/images/parts/04-r002-shunt-resistor.webp" width="150" alt="R002 two milliohm shunt resistor"> | [R002 shunt resistor](https://pt.aliexpress.com/item/1005003339688820.html) | `0.002 ohm` current shunt used to modify the LTC2944 board below. The firmware constant `LTC_SHUNT_OHMS` is set to `0.002f`. |
+| <img src="docs/images/parts/05-at24c256-eeprom.webp" width="150" alt="AT24C256 EEPROM module"> | [AT24C256 I2C EEPROM module](https://pt.aliexpress.com/item/1005007083692220.html) | Stores persistent battery state, configuration and low-battery lockout; address `0x50` by default. |
+| <img src="docs/images/parts/06-w5500-evb-pico.webp" width="150" alt="WIZnet W5500-EVB-Pico board"> | [WIZnet W5500-EVB-Pico](https://pt.aliexpress.com/item/1005008613789535.html) | RP2040 controller with wired W5500 Ethernet. The custom PCB below plugs onto it through female headers. |
+| <img src="docs/images/parts/07-mini-5v-buck.webp" width="150" alt="Miniature DC-DC buck converter"> | [Mini DC-DC buck converter](https://pt.aliexpress.com/item/1005004522623517.html) | Use the 5 V output variant shown for the local 5 V rail; verify the output with a meter before connecting electronics. |
+| <img src="docs/images/parts/08-12v-dc-dc-converter.webp" width="150" alt="DC-DC converter with 12 volt output"> | [DC-DC converter module](https://pt.aliexpress.com/item/1005009914339871.html) | Use the 12 V output variant shown. Confirm input range, polarity and regulated output for the purchased option. |
+| <img src="docs/images/parts/09-sc-120w-12-ups-supply.webp" width="150" alt="SC-120W-12 UPS and battery charger power supply"> | [MZMW SC-series UPS/charger supply](https://pt.aliexpress.com/item/1005005835163230.html) | The pictured build uses the **SC-120W-12 (120 W, 12 V)** option as the mains supply and battery charger. |
+| <img src="docs/images/parts/10-sealed-5v-usb-converter.webp" width="150" alt="Sealed wide-input 5 volt USB converter"> | [Wide-input 5 V USB DC-DC converter](https://pt.aliexpress.com/item/1005006466617097.html) | Provides a regulated USB 5 V output. Seller photos show conflicting maximum-current claims, so size and fuse it from the rating printed on the received unit. |
+| <img src="docs/images/parts/11-ads1115.webp" width="150" alt="ADS1115 I2C analog to digital converter"> | [ADS1115 16-bit I2C ADC module](https://pt.aliexpress.com/item/1005005973975124.html) | Reads the isolated PC817 outputs on A0/Pi1 and A1/Pi2. Tie ADDR to the ADS-side GND for address `0x48`. |
+| <img src="docs/images/parts/12-spring-terminal-blocks.webp" width="150" alt="Spring terminal block connectors"> | [Spring terminal block connectors](https://pt.aliexpress.com/item/1005010494299157.html) | Board wiring connectors. Select the pitch and pole count that match the PCB footprints and verify orientation before soldering. |
+| <img src="docs/images/parts/13-ltc2944-board.webp" width="150" alt="LTC2944 battery gauge board with original R050 shunt"> | [LTC2944 battery monitor board](https://pt.aliexpress.com/item/1005006332511347.html) | Measures battery voltage, current and temperature. **Replace the board's original `R050` shunt with the `R002` part listed above** so the hardware matches the firmware's `0.002 ohm` calibration. |
+| <img src="docs/images/parts/14-female-header-kit.webp" width="150" alt="Female PCB header assortment"> | [Female PCB header assortment](https://pt.aliexpress.com/item/4000523047541.html) | Connects the custom piggyback PCB to the W5500-EVB-Pico. Cut/select the correct lengths and confirm pin alignment before insertion. |
+
+Product photos are identification references supplied by the project owner.
+Product names, trademarks and image rights remain with their respective owners.
+
+> [!WARNING]
+> The SC-120W supply exposes hazardous mains voltage, and a 12 V battery can
+> deliver destructive fault current. Use a grounded enclosure, strain relief,
+> insulated covers and correctly rated fuses close to the battery and source.
+> Do not work on the assembly while mains or battery power is connected.
+
+### W5500-EVB-Pico piggyback PCB
+
+![W5500-EVB-Pico piggyback PCB layout](docs/images/pcb/w5500-pico-piggyback-layout.webp)
+
+The custom board is approximately `57.56 mm` long and mounts to the
+W5500-EVB-Pico using the [female header
+strips](https://pt.aliexpress.com/item/4000523047541.html) listed above. The
+editable KiCad board/project and supplied manufacturing outputs are included
+under [`hardware/w5500-piggyback`](hardware/w5500-piggyback). The original
+folder did not contain a schematic for this board.
+
+- [`source/w5500.kicad_pcb`](hardware/w5500-piggyback/source/w5500.kicad_pcb)
+  is the editable board layout.
+- [`source/w5500.kicad_pro`](hardware/w5500-piggyback/source/w5500.kicad_pro)
+  is the KiCad project configuration.
+- [`fabrication/gerber`](hardware/w5500-piggyback/fabrication/gerber) contains
+  the supplied Gerber, drill and Gerber-job files.
+- [`fabrication/cnc`](hardware/w5500-piggyback/fabrication/cnc) contains the
+  supplied isolation-routing, outline and drill CNC files.
+
+The fabrication files are snapshots from the original design folder. Open the
+PCB in KiCad, run DRC, verify the board outline, connector orientation and
+clearances, and regenerate the manufacturing output before ordering a board or
+running a CNC job.
 
 The Pico uses GP12 for SDA and GP13 for SCL. Devices within each ISO1540 power
 domain share that domain's ground; do not bridge the isolation barrier. SDA and
@@ -21,6 +91,12 @@ Power the ADS1115 from its local isolated-side 3.3 V supply. Its GND and ADDR
 pins connect to the PC817 output-side GND, selecting I2C address `0x48`. Connect
 A0 to the Pi1 PC817 output and A1 to the Pi2 PC817 output; never connect either
 Pi power rail or Pi-side ground directly across the isolation barrier.
+
+On the two-channel PC817 board, remove both yellow ground-link jumpers before
+connecting it. Leaving either jumper installed bridges that channel's input and
+output grounds and defeats the isolation relied upon by this wiring. With the
+board fully disconnected and unpowered, verify that input-side GND and
+output-side GND are no longer continuous before installing it.
 
 The installed PC817 outputs are active-low and calibrated for the measured
 GPIO17 interface levels: approximately `0.017 V` while running and `0.58 V`

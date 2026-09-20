@@ -9,7 +9,7 @@ homeassistant_ups_package.yaml
 plans/
 
 # Generated firmware and caches
-build/
+/build/
 __pycache__/
 *.py[cod]
 
@@ -22,3 +22,9 @@ tmp/
 **/.DS_Store
 .idea/
 .vscode/
+
+# KiCad editor-local state and automatic backups
+*.kicad_prl
+*-backups/
+fp-info-cache
+~*.lck
